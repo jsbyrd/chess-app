@@ -1,10 +1,10 @@
+import Random from './games/Random';
+import './index.css'
 
 const App = () => {
 
   return (
-    <div>
-      Hello there!
-    </div>
+    <Random />
   )
 }
 
