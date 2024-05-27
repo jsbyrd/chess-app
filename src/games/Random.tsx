@@ -1,13 +1,26 @@
 import { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
+import { getStockfishEval } from '../services/stockfishService';
+
+enum Gamemode {
+  Random,
+  Stockfish
+}
+
+type Move = {
+  from: string;
+  to: string;
+  promotion?: string | undefined;
+}
 
 const Random = () => {
 
   const [game, setGame] = useState<Chess>(new Chess());
   const [gameIsActive, setGameIsActive] = useState<boolean>(true);
+  const [gamemode, setGamemode] = useState<Gamemode>(Gamemode.Stockfish);
 
-  const makeMove = (move: Move): Move | null => {
+  const makeMove = (move: Move |string): Move | null => {
     const gameCopy: Chess = new Chess();
     gameCopy.loadPgn(game.pgn());
     const result: Move | null = gameCopy.move(move);
@@ -15,11 +28,28 @@ const Random = () => {
     return result;
   }
 
+  const stockfishMove = async (fen: string): Promise<undefined> => {
+    try {
+      const res = await getStockfishEval(fen);
+      console.log(res);
+      const bestMove: string | null = (res) ? res.bestmove.split(' ')[1] : null;
+      if (!bestMove) return;
+      makeMove(bestMove);
+      // Exit if game is over
+      if (res?.evaluation === null) {
+        game.reset();
+        location.reload();
+        // setGameIsActive(false);
+      }
+    }
+    catch {
+      console.log('uh oh...');
+    }
+  }
+
   const randomMove = (): undefined => {
-    console.log("Yo");
     const possibleMoves: string[] = game.moves();
     if (possibleMoves.length === 0) {
-      console.log("Take that L");
       game.reset();
       location.reload();
       // setGameIsActive(false);
@@ -49,7 +79,10 @@ const Random = () => {
   }
 
   // On every render, move when it is no longer user's turn
-  if (gameIsActive && game.turn() !== 'w') setTimeout(randomMove, 300);
+  if (gameIsActive && game.turn() !== 'w') {
+    if (gamemode === Gamemode.Stockfish) stockfishMove(game.fen());
+    else setTimeout(randomMove, 300);
+  }
 
   return (
     <div className='w-[400px]'>
